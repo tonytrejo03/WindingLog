@@ -1,0 +1,201 @@
+Option Explicit
+
+Sub AddTape(strSheet As String, printRow As Integer)
+
+    Dim nextRow As Long
+    Dim nextSerial As Long
+    Dim tapeID As Integer
+    Dim expYear As Long
+    Dim expMo As Long
+    Dim expDay As Integer
+    Dim tapeFrames As Integer
+    Dim bytes(50) As Byte
+    Dim nFileNum As Integer
+    Dim path As String
+    Dim fileName As String
+    Dim filePathAndName As String
+    Dim i As Integer
+    Dim key As Integer
+    Dim longIn As Long
+    Dim intIn As Long
+    Dim expDate As Date
+
+    
+    nextSerial = ActiveWorkbook.Worksheets(strSheet).Cells(printRow, 1)
+    
+    'Get Expiration
+    expDate = ActiveWorkbook.Worksheets(strSheet).Cells(printRow, 6)
+    
+    
+    expYear = Year(expDate)
+    expMo = Month(expDate)
+    expDay = Day(expDate)
+    
+    Dim nTapeInfoRow As Integer
+    
+    Dim partNum As String
+    partNum = ActiveWorkbook.Worksheets(strSheet).Cells(printRow, 3)
+    
+    nTapeInfoRow = FindRFIDCode(partNum)
+    If (nTapeInfoRow < 1) Then
+        MsgBox "Cannot find RFID code for " + partNum + " in Row " + printRow
+        Exit Sub
+    End If
+    
+    'Get Tape ID
+    tapeID = ActiveWorkbook.Worksheets("CombinedTapeInfo").Cells(nTapeInfoRow, 29)
+    
+    'Get Tape Frames
+    tapeFrames = ActiveWorkbook.Worksheets("CombinedTapeInfo").Cells(nTapeInfoRow, 32)
+    
+    
+    'Create .dat file for writing RFID encoder structure and open for editing
+    path = "P:\Manufacturing\Labels\BarTender\ScanFolder\Vision8EncodedData\"
+    fileName = CStr(nextSerial) + ".dat"
+    filePathAndName = path + fileName
+    nFileNum = FreeFile
+    Open filePathAndName For Binary Lock Read Write As #nFileNum
+    
+    'Build RFID encoder structure
+    bytes(0) = 0
+    bytes(1) = 0
+    bytes(2) = 0
+    bytes(3) = 0
+    
+'    intIn = expDay * 67
+'    For i = 0 To (LenB(intIn) - 1)
+'        bytes(4 + i) = (Int(intIn / (2 ^ (8 * (LenB(intIn) - 1 - i))))) And ((2 ^ 8) - 1)
+'    Next i
+    
+    bytes(4) = (expDay * 67) And 255
+    bytes(5) = ((expDay * 67) \ 256) And 255
+    
+'    intIn = expDay
+'    For i = 0 To (LenB(intIn) - 1)
+'        bytes(6 + i) = (Int(intIn / (2 ^ (8 * (LenB(intIn) - 1 - i))))) And ((2 ^ 8) - 1)
+'    Next i
+
+    bytes(6) = expDay And 255
+    bytes(7) = (expDay \ 256) And 255
+
+'    intIn = tapeFrames
+'    For i = 0 To (LenB(intIn) - 1)
+'        bytes(8 + i) = (Int(intIn / (2 ^ (8 * (LenB(intIn) - 1 - i))))) And ((2 ^ 8) - 1)
+'    Next i
+
+    bytes(8) = tapeFrames And 255
+    bytes(9) = (tapeFrames \ 256) And 255
+
+    bytes(10) = 0   'InstallMo
+    bytes(11) = 0
+    
+    bytes(12) = 0   'TapeFramesUsed
+    bytes(13) = 0
+    
+'    intIn = expYear
+'    For i = 0 To (LenB(intIn) - 1)
+'        bytes(14 + i) = (Int(intIn / (2 ^ (8 * (LenB(intIn) - 1 - i))))) And ((2 ^ 8) - 1)
+'    Next i
+    bytes(14) = expYear And 255
+    bytes(15) = (expYear \ 256) And 255
+    
+    bytes(16) = 0   'UserID
+    bytes(17) = 0
+    
+'    longIn = nextSerial * 3
+'    For i = 0 To (LenB(longIn) - 1)
+'        bytes(18 + i) = (Int(longIn / (2 ^ (8 * (LenB(longIn) - 1 - i))))) And ((2 ^ 8) - 1)
+'    Next i
+
+    bytes(18) = (nextSerial * 3) And 255
+    bytes(19) = ((nextSerial * 3) \ 256) And 255
+    
+    bytes(22) = 0   'InstallDay
+    bytes(23) = 0
+    
+    bytes(24) = 0   'LastUpdated
+    bytes(25) = 0
+    bytes(26) = 0
+    bytes(27) = 0
+    bytes(28) = 0
+    bytes(29) = 0
+    bytes(30) = 0
+    bytes(31) = 0
+    
+    bytes(32) = 0   'InstallYear
+    bytes(33) = 0
+    
+'    longIn = Application.WorksheetFunction.RoundDown(nextSerial / 49, 0)
+'    For i = 0 To (LenB(longIn) - 1)
+'        bytes(34 + i) = (Int(longIn / (2 ^ (8 * (LenB(longIn) - 1 - i))))) And ((2 ^ 8) - 1)
+'    Next i
+    
+    bytes(34) = Application.WorksheetFunction.RoundDown(nextSerial / 49, 0) And 255
+    bytes(35) = (nextSerial \ 256) And 255
+    
+'    longIn = nextSerial
+'    For i = 0 To (LenB(longIn) - 1)
+'        bytes(38 + i) = (Int(longIn / (2 ^ (8 * (LenB(longIn) - 1 - i))))) And ((2 ^ 8) - 1)
+'    Next i
+    
+    bytes(38) = nextSerial And 255
+    bytes(39) = (nextSerial \ 256) And 255
+    bytes(40) = (nextSerial \ 65536) And 255
+    bytes(41) = (nextSerial \ 16777216) And 255
+
+'    intIn = expMo
+'    For i = 0 To (LenB(intIn) - 1)
+'        bytes(42 + i) = (Int(intIn / (2 ^ (8 * (LenB(intIn) - 1 - i))))) And ((2 ^ 8) - 1)
+'    Next i
+    
+    bytes(42) = expMo And 255
+    bytes(43) = (expMo \ 256) And 255
+
+
+'    intIn = tapeID
+'    For i = 0 To (LenB(intIn) - 1)
+'        bytes(44 + i) = (Int(intIn / (2 ^ (8 * (LenB(intIn) - 1 - i))))) And ((2 ^ 8) - 1)
+'    Next i
+
+    bytes(44) = tapeID And 255
+    bytes(45) = (tapeID \ 256) And 255
+    
+'    longIn = expMo + 127
+'    For i = 0 To (LenB(longIn) - 1)
+'        bytes(46 + i) = (Int(longIn / (2 ^ (8 * (LenB(longIn) - 1 - i))))) And ((2 ^ 8) - 1)
+'    Next i
+    
+    bytes(46) = (expMo + 127) And 255
+    bytes(47) = ((expMo + 127) \ 256) And 255
+    
+    key = 249
+    For i = 4 To 49 Step 1
+        bytes(i) = bytes(i) Xor key
+    Next i
+    
+    
+    'Put bytes into .dat and close file
+    Put #nFileNum, , bytes
+    Close #nFileNum
+          
+End Sub
+
+Function FindRFIDCode(ByVal partNum As String) As Long
+
+    FindRFIDCode = 0
+    Dim matchResult As Variant
+    Dim tbl As ListObject
+    Set tbl = Range("CombinedTapeInfo").ListObject
+    
+    matchResult = Application.Match(partNum, tbl.ListColumns(1).DataBodyRange, 0)
+    
+    If IsError(matchResult) Then
+        FindRFIDCode = 0
+    Else
+        FindRFIDCode = matchResult + tbl.HeaderRowRange.Row
+    End If
+    
+End Function
+
+
+
